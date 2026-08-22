@@ -3,37 +3,45 @@ importScripts("/scram/scramjet.all.js");
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
 const scramjet = new ScramjetServiceWorker();
 
-// The script snippet to be injected directly inside the target iframe's context
 const injectCode = `
-	<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-	<script>eruda.init();</script>
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>
+    eruda.init();
+</script>
 `;
 
 async function handleRequest(event) {
-	await scramjet.loadConfig();
-	
-	if (scramjet.route(event)) {
-		const response = await scramjet.fetch(event);
-		const contentType = response.headers.get("content-type") || "";
+    await scramjet.loadConfig();
 
-		// Only modify requests that return HTML web documents
-		if (contentType.includes("text/html")) {
-			let htmlText = await response.text();
-			
-			// Dynamically inject the Eruda devtools right before the closing head tag
-			htmlText = htmlText.replace("</head>", `${injectCode}</head>`);
-			
-			return new Response(htmlText, {
-				headers: response.headers
-			});
-		}
-		
-		return response;
-	}
-	
-	return fetch(event.request);
+    if (scramjet.route(event)) {
+        const response = await scramjet.fetch(event);
+
+        const contentType = response.headers.get("content-type") || "";
+
+        if (contentType.includes("text/html")) {
+            let html = await response.text();
+
+            html = html.replace(
+                /<\/head>/i,
+                `${injectCode}</head>`
+            );
+
+            const headers = new Headers(response.headers);
+            headers.delete("content-length");
+
+            return new Response(html, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: headers
+            });
+        }
+
+        return response;
+    }
+
+    return fetch(event.request);
 }
 
 self.addEventListener("fetch", (event) => {
-	event.respondWith(handleRequest(event));
+    event.respondWith(handleRequest(event));
 });
