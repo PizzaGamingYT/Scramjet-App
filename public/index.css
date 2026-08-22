@@ -46,7 +46,11 @@ body {
 }
 
 .logo {
-	height: 100px;
+    height: 100px;
+    width: auto;
+    max-width: 90vw;
+    object-fit: contain;
+	overflow: hidden;
 }
 
 .logo-wrapper .text {
